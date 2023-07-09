@@ -8,168 +8,192 @@
 // Small Entity Component System
 namespace SECS
 {
-    using Entity = unsigned int;
+	using Entity = unsigned int;
 
-    template <typename Component> using EntityMap = std::unordered_map<Entity, Component>;
+	template <typename Component>
+	using EntityMap = std::unordered_map<Entity, Component>;
 
-    template <typename... Components> struct ComponentTypes : public std::bitset<sizeof...(Components)>
-    {
-        template <typename Component> static constexpr std::size_t index()
-        {
-            std::size_t idx   = 0;
-            bool        found = false;
-            (((found || std::is_same_v<Component, Components>) ? found = true : ++idx), ...);
-            return idx;
-        }
+	template <typename... Components>
+	struct ComponentTypes : public std::bitset<sizeof...(Components)>
+	{
+			template <typename Component>
+			static constexpr std::size_t index()
+			{
+				std::size_t idx	  = 0;
+				bool		found = false;
+				(((found || std::is_same_v<Component, Components>) ? found = true : ++idx), ...);
+				return idx;
+			}
 
-        template <typename Component> bool const& get() const { return this->operator[](index<Component>()); }
-        template <typename Component> void        set(bool const& bit) { this->operator[](index<Component>()) = bit; }
+			template <typename Component>
+			bool const& get() const
+			{
+				return this->operator[](index<Component>());
+			}
 
-        template <typename... ComponentList> static constexpr ComponentTypes make()
-        {
-            ComponentTypes types;
-            ((types.template set<ComponentList>(true)), ...);
-            return types;
-        }
+			template <typename Component>
+			void set(bool const& bit)
+			{
+				this->operator[](index<Component>()) = bit;
+			}
 
-        template <typename... ComponentList> bool has() const
-        {
-            return ComponentTypes().template make<ComponentList...>() ==
-                   (*this & ComponentTypes().template make<ComponentList...>());
-        }
-    };
+			template <typename... ComponentList>
+			static constexpr ComponentTypes make()
+			{
+				ComponentTypes types;
+				((types.template set<ComponentList>(true)), ...);
+				return types;
+			}
 
-    template <typename... Components> class EntityManager
-    {
-        using Types        = ComponentTypes<Components...>;
-        using ComponentMap = EntityMap<Types>;
+			template <typename... ComponentList>
+			bool has() const
+			{
+				return ComponentTypes().template make<ComponentList...>() == (*this & ComponentTypes().template make<ComponentList...>());
+			}
+	};
 
-        std::tuple<ComponentMap, EntityMap<Components>...> registry;
-        std::unordered_set<Entity>                         alive, dead;
+	template <typename... Components>
+	class EntityManager
+	{
+			using Types		   = ComponentTypes<Components...>;
+			using ComponentMap = EntityMap<Types>;
 
-      public:
+			std::tuple<ComponentMap, EntityMap<Components>...> registry;
+			std::unordered_set<Entity>						   alive, dead;
 
-        Entity create()
-        {
-            static Entity count = 0;
-            Entity        id;
+		public:
 
-            if (!dead.empty())
-            {
-                id = *dead.begin();
-                dead.erase(dead.begin());
-            }
-            else
-                id = count++;
+			Entity create()
+			{
+				static Entity count = 0;
+				Entity		  id;
 
-            std::get<ComponentMap>(registry)[id] = {};
-            alive.insert(id);
-            return id;
-        }
+				if(!dead.empty())
+				{
+					id = *dead.begin();
+					dead.erase(dead.begin());
+				}
+				else
+					id = count++;
 
-        void destroy(Entity const& id)
-        {
-            std::get<ComponentMap>(registry).erase(id);
-            (std::get<EntityMap<Components>>(registry).erase(id), ...);
-            alive.erase(id);
-            dead.insert(id);
-        }
+				std::get<ComponentMap>(registry)[id] = {};
+				alive.insert(id);
+				return id;
+			}
 
-        template <typename... ComponentList> class Iterator
-        {
-            std::unordered_set<Entity>::const_iterator current;
-            std::unordered_set<Entity>::const_iterator end;
-            ComponentMap const&                        types;
+			void destroy(Entity const& id)
+			{
+				std::get<ComponentMap>(registry).erase(id);
+				(std::get<EntityMap<Components>>(registry).erase(id), ...);
+				alive.erase(id);
+				dead.insert(id);
+			}
 
-            bool valid(Entity const& e)
-            {
-                return (!(Types().template make<ComponentList...>().any()) ||
-                        types.at(e).template has<ComponentList...>());
-            }
+			template <typename... ComponentList>
+			class Iterator
+			{
+					std::unordered_set<Entity>::const_iterator current;
+					std::unordered_set<Entity>::const_iterator end;
+					ComponentMap const&						   types;
 
-            void advance()
-            {
-                while (current != end && !valid(*current)) ++current;
-            }
+					bool valid(Entity const& e)
+					{
+						return (!(Types().template make<ComponentList...>().any()) || types.at(e).template has<ComponentList...>());
+					}
 
-          public:
+					void advance()
+					{
+						while(current != end && !valid(*current)) ++current;
+					}
 
-            Iterator() = default;
-            Iterator(std::unordered_set<Entity>::const_iterator const& begin,
-                     std::unordered_set<Entity>::const_iterator const& end, ComponentMap const& types)
-                : current(begin), end(end), types(types)
-            {
-                advance();
-            }
+				public:
 
-            Entity const& operator*() const { return *current; }
-            Entity const* operator->() { return current.operator->(); }
+					Iterator() = default;
 
-            Iterator& operator++()
-            {
-                ++current;
-                advance();
-                return *this;
-            }
+					Iterator(std::unordered_set<Entity>::const_iterator const& begin,
+							 std::unordered_set<Entity>::const_iterator const& end, ComponentMap const& types)
+						: current(begin), end(end), types(types)
+					{
+						advance();
+					}
 
-            Iterator operator++(int)
-            {
-                Iterator tmp = *this;
-                ++(*this);
-                return tmp;
-            }
+					Entity const& operator*() const { return *current; }
 
-            friend bool operator==(Iterator const& a, Iterator const& b) { return a.current == b.current; };
-            friend bool operator!=(Iterator const& a, Iterator const& b) { return a.current != b.current; };
-        };
+					Entity const* operator->() { return current.operator->(); }
 
-        template <typename... ComponentList> struct IteratorRange
-        {
-            std::unordered_set<Entity> const& alive;
-            ComponentMap const&               types;
+					Iterator& operator++()
+					{
+						++current;
+						advance();
+						return *this;
+					}
 
-            Iterator<ComponentList...> begin() const
-            {
-                return Iterator<ComponentList...>(alive.begin(), alive.end(), types);
-            }
+					Iterator operator++(int)
+					{
+						Iterator tmp = *this;
+						++(*this);
+						return tmp;
+					}
 
-            Iterator<ComponentList...> end() const
-            {
-                return Iterator<ComponentList...>(alive.end(), alive.end(), types);
-            }
+					friend bool operator==(Iterator const& a, Iterator const& b) { return a.current == b.current; }
 
-            IteratorRange(std::unordered_set<Entity> const& alive, ComponentMap const& types)
-                : alive(alive), types(types)
-            {}
-        };
+					friend bool operator!=(Iterator const& a, Iterator const& b) { return a.current != b.current; }
+			};
 
-        template <typename... ComponentList> IteratorRange<ComponentList...> entities() const
-        {
-            return {alive, std::get<ComponentMap>(registry)};
-        }
+			template <typename... ComponentList>
+			struct IteratorRange
+			{
+					std::unordered_set<Entity> const& alive;
+					ComponentMap const&				  types;
 
-        template <typename Component> Component& get(Entity const& entity)
-        {
-            return std::get<EntityMap<Component>>(registry).at(entity);
-        }
+					Iterator<ComponentList...> begin() const
+					{
+						return Iterator<ComponentList...>(alive.begin(), alive.end(), types);
+					}
 
-        template <typename Component> Component& add(Entity const& entity)
-        {
-            std::get<ComponentMap>(registry)[entity].template set<Component>(true);
-            return std::get<EntityMap<Component>>(registry)[entity];
-        }
+					Iterator<ComponentList...> end() const
+					{
+						return Iterator<ComponentList...>(alive.end(), alive.end(), types);
+					}
 
-        template <typename Component> void remove(Entity const& entity)
-        {
-            std::get<ComponentMap>(registry)[entity].template set<Component>(false);
-            std::get<EntityMap<Component>>(registry).erase(entity);
-        }
+					IteratorRange(std::unordered_set<Entity> const& alive, ComponentMap const& types)
+						: alive(alive), types(types)
+					{
+					}
+			};
 
-        template <typename... ComponentList> bool has(Entity const& entity)
-        {
-            return std::get<ComponentMap>(registry)[entity].template has<ComponentList...>();
-        }
+			template <typename... ComponentList>
+			IteratorRange<ComponentList...> entities() const
+			{
+				return { alive, std::get<ComponentMap>(registry) };
+			}
 
-        bool isAlive(Entity const& entity) { return alive.count(entity); }
-    };
-} // namespace SECS
+			template <typename Component>
+			Component& get(Entity const& entity)
+			{
+				return std::get<EntityMap<Component>>(registry).at(entity);
+			}
+
+			template <typename Component>
+			Component& add(Entity const& entity)
+			{
+				std::get<ComponentMap>(registry)[entity].template set<Component>(true);
+				return std::get<EntityMap<Component>>(registry)[entity];
+			}
+
+			template <typename Component>
+			void remove(Entity const& entity)
+			{
+				std::get<ComponentMap>(registry)[entity].template set<Component>(false);
+				std::get<EntityMap<Component>>(registry).erase(entity);
+			}
+
+			template <typename... ComponentList>
+			bool has(Entity const& entity)
+			{
+				return std::get<ComponentMap>(registry)[entity].template has<ComponentList...>();
+			}
+
+			bool isAlive(Entity const& entity) { return alive.count(entity); }
+	};
+}	 // namespace SECS
