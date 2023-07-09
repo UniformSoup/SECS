@@ -68,7 +68,7 @@ namespace SECS
 				static Entity count = 0;
 				Entity		  id;
 
-				if(!dead.empty())
+				if (!dead.empty())
 				{
 					id = *dead.begin();
 					dead.erase(dead.begin());
@@ -103,7 +103,7 @@ namespace SECS
 
 					void advance()
 					{
-						while(current != end && !valid(*current)) ++current;
+						while (current != end && !valid(*current)) ++current;
 					}
 
 				public:
