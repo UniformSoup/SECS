@@ -112,7 +112,9 @@ namespace SECS
 
 					Iterator(std::unordered_set<Entity>::const_iterator const& begin,
 							 std::unordered_set<Entity>::const_iterator const& end, ComponentMap const& types)
-						: current(begin), end(end), types(types)
+						: current(begin),
+						  end(end),
+						  types(types)
 					{
 						advance();
 					}
@@ -157,7 +159,8 @@ namespace SECS
 					}
 
 					IteratorRange(std::unordered_set<Entity> const& alive, ComponentMap const& types)
-						: alive(alive), types(types)
+						: alive(alive),
+						  types(types)
 					{
 					}
 			};
@@ -165,7 +168,7 @@ namespace SECS
 			template <typename... ComponentList>
 			IteratorRange<ComponentList...> entities() const
 			{
-				return { alive, std::get<ComponentMap>(registry) };
+				return {alive, std::get<ComponentMap>(registry)};
 			}
 
 			template <typename Component>
