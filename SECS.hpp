@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <unordered_set>
+#include <bitset>
 
 // Thank god ChatGPT understands variadic templates and fold expressions.
 
