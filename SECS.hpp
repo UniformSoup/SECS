@@ -1,8 +1,8 @@
 #pragma once
 
+#include <bitset>
 #include <unordered_map>
 #include <unordered_set>
-#include <bitset>
 
 // Thank god ChatGPT understands variadic templates and fold expressions.
 
@@ -188,6 +188,17 @@ namespace SECS
 				std::get<EntityMap<Component>>(registry).erase(entity);
 			}
 
+			template <typename Component>
+			std::vector<Component*> components()
+			{
+				std::vector<Component*> c;
+
+				for (auto& pair : std::get<EntityMap<Component>>(registry))
+					c.push_back(&(pair.second));
+
+				return c;
+			}
+
 			template <typename... ComponentList>
 			bool has(Entity const& entity)
 			{
@@ -196,4 +207,4 @@ namespace SECS
 
 			bool isAlive(Entity const& entity) { return alive.count(entity); }
 	};
-}	 // namespace SECS
+}
